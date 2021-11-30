@@ -1,0 +1,79 @@
+version: '3.5'
+services:
+  backend:
+    build:
+      args:
+      - NODE_ENV=development
+      context: backend
+    command: npm run start-watch
+    environment:
+      - DB_DB=veggie-db
+      - DB_USER=veggie-user
+      - DB_PASS=veggie-root
+      - DB_PORT=3306
+      - DB_HOST=db
+      - NODE_ENV=development
+    ports:
+      - 80:80
+      - 9229:9229 # tests
+      - 9230:9230 # debug
+    volumes:
+      - ./backend/src:/code/src:ro
+      - ./backend/package.json:/code/package.json
+      - ./backend/package-lock.json:/code/package-lock.json
+      - ./backend/notused:/opt/app/node_modules
+    networks:
+      - frontend-network
+      - db-network
+    depends_on:
+      - db
+  db:
+    container_name: db
+    image: mysql
+    command: '--default-authentication-plugin=mysql_native_password --secure-file-priv=/var/lib/mysql'
+    restart: always
+    ports:  
+      - 3306:3306
+    volumes:
+      - ./db:/var/lib/mysql
+    networks:
+      - db-network
+    environment:
+      - MYSQL_DATABASE=veggie-db
+      - MYSQL_USER=veggie-user
+      - MYSQL_ROOT_PASSWORD=veggie-root
+      # - MYSQL_ROOT_HOST=%
+  frontend:
+    build:
+      context: frontend
+      target: development
+    ports:
+      - 3000:3000
+    volumes:
+      - ./frontend/public:/code/public
+      - ./frontend/src:/code/src
+      - /code/node_modules
+    networks:
+      - frontend-network
+    depends_on:
+      - backend
+  # nginx:
+  #   depends_on:
+  #     - backend
+  #     - frontend
+  #   restart: always
+  #   build:
+  #     # dockerfile: Dockerfile
+  #     context: ./nginx
+  #   ports:
+  #     - "2009:80"
+networks:
+  frontend-network:
+    # external:
+    #   name: frontend-network
+  db-network:
+    # external:
+    #   name: db-network
+# secrets:
+#   db-password:
+#     file: db/password.txt
